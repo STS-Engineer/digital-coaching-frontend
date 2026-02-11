@@ -26,8 +26,7 @@ api.interceptors.response.use(
         
         console.log('Authentication required, redirecting to login...');
         
-        // Rediriger vers la page de login
-        window.location.href = '/login';
+
       }
     }
     
