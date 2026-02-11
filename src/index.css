@@ -64,30 +64,11 @@
     @apply antialiased transition-colors duration-200;
   }
 
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(15, 27, 45, 0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(15, 27, 45, 0.04) 1px, transparent 1px);
-    background-size: 28px 28px;
-    opacity: 0.25;
-    pointer-events: none;
-    z-index: 0;
-  }
-
   body.dark {
     background-image:
       radial-gradient(1200px 420px at 10% -10%, rgba(74, 163, 223, 0.18), transparent 60%),
       radial-gradient(900px 420px at 90% 0%, rgba(245, 161, 90, 0.18), transparent 55%),
       linear-gradient(180deg, rgba(11, 20, 34, 0.95) 0%, rgba(11, 20, 34, 0.75) 60%, rgba(11, 20, 34, 0.95) 100%);
-  }
-
-  body.dark::before {
-    background-image:
-      linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
   }
 
   #root {
