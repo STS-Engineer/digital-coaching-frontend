@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Layout/Sidebar";
 import ChatInterface from "../components/Chat/ChatInterface";
@@ -10,6 +10,10 @@ const ChatPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [history, setHistory] = useState([]);
   const [currentChatId, setCurrentChatId] = useState(chatId || null);
+  const [chatMeta, setChatMeta] = useState({});
+
+  const bot = BOTS?.[botId]; // safe read
+  const storageKey = botId ? `chatMeta:${botId}` : null;
 
   useEffect(() => {
     if (!botId || !BOTS[botId]) {
@@ -17,16 +21,89 @@ const ChatPage = () => {
     }
   }, [botId, navigate]);
 
-  if (!BOTS[botId]) {
-    return null;
-  }
+  useEffect(() => {
+    if (!storageKey || typeof window === "undefined") return;
+    const stored = window.localStorage.getItem(storageKey);
+    if (!stored) {
+      setChatMeta({});
+      return;
+    }
+    try {
+      const parsed = JSON.parse(stored);
+      setChatMeta(parsed && typeof parsed === "object" ? parsed : {});
+    } catch (error) {
+      console.error("Failed to parse chat meta", error);
+      setChatMeta({});
+    }
+  }, [storageKey]);
 
-  const bot = BOTS[botId];
+  useEffect(() => {
+    if (!storageKey || typeof window === "undefined") return;
+    window.localStorage.setItem(storageKey, JSON.stringify(chatMeta));
+  }, [chatMeta, storageKey]);
+
+  const sidebarHistory = useMemo(() => {
+    const normalized = history
+      .filter((item) => !chatMeta[item.chat_id]?.deleted)
+      .map((item) => {
+        const meta = chatMeta[item.chat_id] || {};
+        return {
+          ...item,
+          displayTitle: meta.title || item.title || "Untitled chat",
+          isPinned: Boolean(meta.pinned),
+        };
+      });
+
+    const pinned = normalized.filter((item) => item.isPinned);
+    const unpinned = normalized.filter((item) => !item.isPinned);
+    return [...pinned, ...unpinned];
+  }, [history, chatMeta]);
+
+  // ✅ early return AFTER hooks
+  if (!bot) return null;
+
+  const handleRenameChat = (chatIdToRename, newTitle) => {
+    const cleanTitle = newTitle.trim();
+    if (!cleanTitle) return;
+    setChatMeta((prev) => ({
+      ...prev,
+      [chatIdToRename]: {
+        ...prev[chatIdToRename],
+        title: cleanTitle,
+      },
+    }));
+  };
+
+  const handleTogglePin = (chatIdToPin) => {
+    setChatMeta((prev) => {
+      const current = prev[chatIdToPin] || {};
+      return {
+        ...prev,
+        [chatIdToPin]: {
+          ...current,
+          pinned: !current.pinned,
+        },
+      };
+    });
+  };
+
+  const handleDeleteChat = (chatIdToDelete) => {
+    setChatMeta((prev) => ({
+      ...prev,
+      [chatIdToDelete]: {
+        ...prev[chatIdToDelete],
+        deleted: true,
+      },
+    }));
+    if (chatIdToDelete === currentChatId) {
+      setCurrentChatId(null);
+      navigate(`/chat/${botId}`);
+    }
+  };
 
   return (
     <div className="flex flex-col h-screen">
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
         <div
           className={`hidden md:block transition-all duration-300 ${
             sidebarOpen ? "w-72" : "w-14"
@@ -35,18 +112,20 @@ const ChatPage = () => {
           <Sidebar
             botId={botId}
             botLabel={bot.label}
-            history={history}
+            history={sidebarHistory}
             onNewChat={() => navigate(`/chat/${botId}`)}
             onSelectChat={(selectedChatId) =>
               navigate(`/chat/${botId}/${selectedChatId}`)
             }
+            onRenameChat={handleRenameChat}
+            onTogglePin={handleTogglePin}
+            onDeleteChat={handleDeleteChat}
             isOpen={sidebarOpen}
             onToggle={() => setSidebarOpen(!sidebarOpen)}
             activeChatId={currentChatId}
           />
         </div>
 
-        {/* Mobile Sidebar Toggle */}
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
           className="md:hidden fixed top-20 left-4 z-50 glass-panel rounded-lg p-2 transition-colors"
@@ -54,7 +133,6 @@ const ChatPage = () => {
           {sidebarOpen ? "←" : "→"}
         </button>
 
-        {/* Mobile Sidebar Overlay */}
         {sidebarOpen && (
           <div className="md:hidden fixed inset-0 z-40">
             <div
@@ -65,7 +143,7 @@ const ChatPage = () => {
               <Sidebar
                 botId={botId}
                 botLabel={bot.label}
-                history={history}
+                history={sidebarHistory}
                 onNewChat={() => {
                   navigate(`/chat/${botId}`);
                   setSidebarOpen(false);
@@ -74,6 +152,9 @@ const ChatPage = () => {
                   navigate(`/chat/${botId}/${selectedChatId}`);
                   setSidebarOpen(false);
                 }}
+                onRenameChat={handleRenameChat}
+                onTogglePin={handleTogglePin}
+                onDeleteChat={handleDeleteChat}
                 isOpen={sidebarOpen}
                 onToggle={() => setSidebarOpen(!sidebarOpen)}
                 activeChatId={currentChatId}
@@ -82,7 +163,6 @@ const ChatPage = () => {
           </div>
         )}
 
-        {/* Main Chat */}
         <div className="flex-1 flex flex-col">
           <ChatInterface
             botId={botId}
