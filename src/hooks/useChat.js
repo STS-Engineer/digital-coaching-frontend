@@ -105,6 +105,62 @@ export function useChat(botId, initialChatId = null) {
     }
   };
 
+  const updateMessage = (messageIndex, newContent) => {
+    if (typeof messageIndex !== 'number') return;
+    const cleanContent = newContent.trim();
+    if (!cleanContent) return;
+    setMessages((prev) =>
+      prev.map((message, index) =>
+        index === messageIndex ? { ...message, content: cleanContent } : message
+      )
+    );
+  };
+
+  const regenerateFromIndex = async (messageIndex, newContent) => {
+    if (loading) return null;
+    if (typeof messageIndex !== 'number') return null;
+    const cleanContent = newContent.trim();
+    if (!cleanContent) return null;
+    if (messageIndex < 0 || messageIndex >= messages.length) return null;
+
+    setMessages((prev) => {
+      const next = prev.slice(0, messageIndex + 1).map((message, index) =>
+        index === messageIndex ? { ...message, content: cleanContent } : message
+      );
+      return next;
+    });
+
+    setLoading(true);
+    try {
+      const response = await chatService.sendMessage(
+        botId,
+        cleanContent,
+        currentChatId
+      );
+
+      if (response.chat_id && response.chat_id !== currentChatId) {
+        setCurrentChatId(response.chat_id);
+      }
+
+      const botMessage = { role: 'assistant', content: response.reply };
+      setMessages((prev) => [...prev, botMessage]);
+
+      await loadHistory();
+      return response;
+    } catch (error) {
+      console.error('Failed to regenerate message:', error);
+      const errorMessage = {
+        role: 'assistant',
+        content: 'Sorry, an error occurred. Please try again.',
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+      toast.error('Failed to regenerate response');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     messages,
     currentChatId,
@@ -114,6 +170,8 @@ export function useChat(botId, initialChatId = null) {
     sendMessage,
     loadChat,
     createNewChat,
+    updateMessage,
+    regenerateFromIndex,
     refreshHistory: loadHistory,
   };
 }
