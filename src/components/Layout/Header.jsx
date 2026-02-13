@@ -39,7 +39,7 @@ const Header = () => {
               src="/logo.png" 
               alt="AVO Carbon Group" 
               className="h-8 w-auto cursor-pointer hover:opacity-90 transition-opacity"
-              onClick={() => navigate("/")}
+              onClick={() => navigate(0)}
             />
           </div>
 
