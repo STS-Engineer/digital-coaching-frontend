@@ -21,6 +21,7 @@ const ChatInterface = ({
     refreshHistory,
     history,
     currentChatId,
+    regenerateFromIndex,
   } = useChat(botId, initialChatId);
 
   useEffect(() => {
@@ -67,6 +68,10 @@ const ChatInterface = ({
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const handleEditSubmit = (messageIndex, newContent) => {
+    regenerateFromIndex(messageIndex, newContent);
   };
 
   return (
@@ -124,6 +129,9 @@ const ChatInterface = ({
             key={index}
             message={message.content}
             isUser={message.role === "user"}
+            messageIndex={index}
+            onEditSubmit={handleEditSubmit}
+            isBusy={loading}
           />
         ))}
 
